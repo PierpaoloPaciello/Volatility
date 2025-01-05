@@ -1,0 +1,9 @@
+streamlit
+pandas==2.2.0        
+numpy    
+yfinance
+requests
+python-dateutil
+matplotlib
+seaborn
+plotly
