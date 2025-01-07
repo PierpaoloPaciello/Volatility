@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 
 # Streamlit App Title
 st.set_page_config(page_title="Volatility Backtest", layout="wide")
-st.title("Volatility Strategy Backtest")
+st.title("Short Volatility Martingale")
 
 # Sidebar for User Input
 st.sidebar.header("Strategy Parameters")
@@ -27,7 +27,7 @@ CREDIT_RATE = st.sidebar.number_input("Credit Rate (Annual)", value=0.05, step=0
 st.sidebar.markdown("---")
 
 # Load Data
-st.header("Market Data")
+#st.header("Market Data")
 
 with st.spinner("Downloading data from Yahoo Finance..."):
     data = yf.download("^SHORTVOL", start="2006-01-01")
@@ -40,7 +40,7 @@ st.write("### Price Data")
 st.dataframe(data.tail())
 
 # Backtest Logic
-st.header("Backtest Results")
+#st.header("Backtest Results")
 
 # Initialize variables
 position_size = INITIAL_INVESTMENT / data["Price"].iloc[0]  # Initial position in shares
@@ -164,12 +164,81 @@ for i, row in data.iterrows():
 # Convert log to DataFrame
 portfolio_log_df = pd.DataFrame(portfolio_log)
 
+# ---------------------------
+# Layers Table Preparation
+# ---------------------------
+#st.header("Layer Overview")
+
+# Retrieve the last max price from the portfolio logs
+last_max_price = portfolio_log_df["Last Max Price"].iloc[-1]
+
+# Calculate the current layer and the 4 layers below
+layers = [last_max_price * (LOSS_THRESHOLD ** i) for i in range(5)]
+
+# Create the Layers Table
+layer_table = pd.DataFrame({
+    "Layer": [f"Layer {i + 1}" for i in range(len(layers))],
+    "Max Price": layers
+})
+
+# Highlight the first row (current layer) and second row (next layer)
+def highlight_layers(row):
+    if row.name == 0:  # Current layer
+        return ['background-color: steelblue'] * len(row)
+    elif row.name == 1:  # Next layer
+        return ['background-color: gray'] * len(row)
+    else:
+        return [''] * len(row)
+
+# Display the Layers Table
+st.subheader("Layers Table")
+st.dataframe(layer_table.style.apply(highlight_layers, axis=1))
+
+
+# ---------------------------
+# Position Values Table Preparation
+# ---------------------------
+st.subheader("Position Values Table")
+
+# Retrieve the last 5 position values and average costs from the portfolio logs
+last_5_entries = portfolio_log_df.tail(5)
+
+# Calculate the take profit prices and % to take profit for each day
+position_table_data = []
+for idx, row in last_5_entries.iterrows():
+    current_price = row["Price"]
+    average_cost = row["Average Cost"]
+    position_value = row["Position Value"]
+    
+    # Calculate take profit price based on current difference
+    take_profit_price = average_cost + (average_cost * PROFIT_THRESHOLD - average_cost)
+    pct_to_profit = ((take_profit_price - current_price) / current_price) * 100
+
+    position_table_data.append({
+        "Position Value": position_value,
+        "Current Price": current_price,
+        "Average Cost": average_cost,
+        "Take Profit Price": take_profit_price,
+        "% to Take Profit": f"{pct_to_profit:.2f}%"
+    })
+
+# Convert to DataFrame
+position_table = pd.DataFrame(position_table_data)
+
+# Display the Position Values Table
+st.dataframe(position_table)
+
+
 # Display logs
 st.subheader("Portfolio Logs")
-st.dataframe(portfolio_log_df)
+sorted_portfolio_log_df = portfolio_log_df.iloc[::-1]
+# Display the sorted DataFrame
+st.dataframe(sorted_portfolio_log_df.style.background_gradient(cmap='viridis'))
+
+#st.dataframe(portfolio_log_df)
 
 # Plot Portfolio Details
-st.subheader("Portfolio Performance")
+st.subheader("")
 fig = go.Figure()
 fig.add_trace(go.Scatter(x=portfolio_log_df['Date'], y=portfolio_log_df['Position Value'], mode='lines', name='Position Value'))
 fig.add_trace(go.Scatter(x=portfolio_log_df['Date'], y=portfolio_log_df['Price'], mode='lines', name='Price', yaxis='y2'))
@@ -186,7 +255,7 @@ annual_profits_df = pd.DataFrame(list(annual_profits.items()), columns=['Year', 
 annual_interest_df = pd.DataFrame(list(annual_interest_costs.items()), columns=['Year', 'Interest Cost'])
 
 # Annual Profits Plot
-st.subheader("Annual Profits")
+st.subheader("")
 fig_profits = go.Figure()
 fig_profits.add_trace(go.Bar(x=annual_profits_df['Year'], y=annual_profits_df['Profit'], name='Annual Profit'))
 fig_profits.update_layout(
@@ -197,7 +266,7 @@ fig_profits.update_layout(
 st.plotly_chart(fig_profits, use_container_width=True)
 
 # Annual Interest Costs Plot
-st.subheader("Annual Interest Costs")
+st.subheader("")
 fig_annual_interest = go.Figure()
 fig_annual_interest.add_trace(go.Bar(x=annual_interest_df['Year'], y=annual_interest_df['Interest Cost'], name='Annual Interest Cost'))
 fig_annual_interest.update_layout(
@@ -206,3 +275,4 @@ fig_annual_interest.update_layout(
     yaxis_title='Interest Cost (€)'
 )
 st.plotly_chart(fig_annual_interest, use_container_width=True)
+
