@@ -12,12 +12,12 @@ st.sidebar.header("Strategy Parameters")
 
 INITIAL_INVESTMENT = st.sidebar.number_input("Initial Investment", value=50000, step=1000)
 INVESTMENT_STEPS = [
-    50000,
-    75000,
-    100000,
-    125000,
-    150000,
-    175000
+    INITIAL_INVESTMENT,
+    INITIAL_INVESTMENT * 1.5,
+    INITIAL_INVESTMENT * 2,
+    INITIAL_INVESTMENT * 2.5,
+    INITIAL_INVESTMENT * 3,
+    INITIAL_INVESTMENT * 3.5,
 ]
 PROFIT_THRESHOLD = st.sidebar.slider("Profit Threshold (x Average Cost)", 1.0, 2.0, 1.5, step=0.1)
 LOSS_THRESHOLD = st.sidebar.slider("Loss Threshold (as % of Max Price)", 0.5, 1.0, 0.65, step=0.01)
